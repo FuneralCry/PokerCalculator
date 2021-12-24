@@ -34,7 +34,7 @@ void PokerCalculator::render_ev_matrix(const pkr::Game_equity& game)
             else
                 s2 = (char)pkr::CardSuit::diamond;
             pkr::Hand h(std::make_pair(pkr::Card(hh.value.first.first,s1),pkr::Card(hh.value.first.second,s2)));
-            ev_matrix[i][j] = game.getEquity(&h);
+            ev_matrix[i][j] = game.getEquityPreFlop(&h);
             max_ev = std::max(ev_matrix[i][j],max_ev);
             min_ev = std::min(ev_matrix[i][j],min_ev);
         }

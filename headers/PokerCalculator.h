@@ -15,6 +15,7 @@ class PokerCalculator
 private:
     bool running;
     std::unordered_map<std::string,char> CardValuesInOut;
+    std::unordered_map<char,char> CardSuitsInOut;
     std::string Hand2String(pkr::HandEq::Hand hand);
     pkr::HandEq::Hand hand_from_xy(int x, int y);
 // SDL stuff
@@ -27,6 +28,7 @@ public:
     void start();
     void calcEquity();
     void processAction(pkr::Game_equity& game, int player_num);
+    std::vector<pkr::Card> fillBoard();
     void calcOdds();
 };
 
