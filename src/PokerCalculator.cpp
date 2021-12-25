@@ -126,10 +126,24 @@ void PokerCalculator::calcEquity()
             char f,s;
             f = this->CardValuesInOut[first];
             s = this->CardValuesInOut[second];
-            if(suited == 's')
-                host_hand = std::make_pair(pkr::Card(f,(char)pkr::CardSuit::club),pkr::Card(s,(char)pkr::CardSuit::club));
-            else
-                host_hand = std::make_pair(pkr::Card(f,(char)pkr::CardSuit::club),pkr::Card(s,(char)pkr::CardSuit::diamond));
+            for(char s1((char)pkr::CardSuit::club); s1 < (char)pkr::CardSuit::spade; ++s1)
+                for(char s2((char)pkr::CardSuit::club); s2 < (char)pkr::CardSuit::spade; ++s2)
+                {
+                    pkr::Card c1(f,s1),c2(s,s2);
+                    if(std::find(board.begin(),board.end(),c1) == board.end() and std::find(board.begin(),board.end(),c2) == board.end())
+                    {
+                        if(suited == 's' and s1 == s2)
+                        {
+                            host_hand = pkr::Hand(std::make_pair(c1,c2));
+                            break;
+                        }
+                        else if(suited == 'n' and s1 != s2)
+                        {
+                            host_hand = pkr::Hand(std::make_pair(c1,c2));
+                            break;
+                        }
+                    }
+                }
             strategies.push_back(std::make_pair(pkr::HandEq::convertRange2Strat(1.0),pkr::HandEq::convertRange2Strat(1.0)));
             std::cout << "What stack do you have? (Enter number like: 10000)" << '\n';
             long long stack;

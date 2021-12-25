@@ -1,9 +1,6 @@
 #ifndef PC_UI_VARS
 #define PC_UI_VARS
 
-#define HANDS_MATRIX_WIDTH 416
-#define HANDS_MATRIX_HEIGHT 416
-
-#define DISPLAY_OFFSET 10
+#define HANDS_MATRIX_CELL_SIZE 32
 
 #endif

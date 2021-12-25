@@ -18,7 +18,7 @@ pkr::HandEq::Hand PokerCalculator::hand_from_xy(int x, int y)
 void PokerCalculator::render_ev_matrix(const pkr::Game_equity& game)
 {
     SDL_Surface* display;
-    if((display = SDL_SetVideoMode(HANDS_MATRIX_WIDTH,HANDS_MATRIX_HEIGHT,32,SDL_HWSURFACE | SDL_DOUBLEBUF)) == NULL)
+    if((display = SDL_SetVideoMode(HANDS_MATRIX_CELL_SIZE*13,HANDS_MATRIX_CELL_SIZE*13,32,SDL_HWSURFACE | SDL_DOUBLEBUF)) == NULL)
         throw std::runtime_error("Can't render hand matrix");
     std::array<std::array<double,13>,13> ev_matrix;
     double max_ev(-99999999),min_ev(99999999);
@@ -39,7 +39,6 @@ void PokerCalculator::render_ev_matrix(const pkr::Game_equity& game)
             min_ev = std::min(ev_matrix[i][j],min_ev);
         }
     }
-    int cell_width(HANDS_MATRIX_WIDTH/13),cell_height(HANDS_MATRIX_HEIGHT/13);
     for(int i(0); i < 13; ++i)
     {
         for(int j(0); j < 13; ++j)
@@ -47,8 +46,7 @@ void PokerCalculator::render_ev_matrix(const pkr::Game_equity& game)
             double ev(ev_matrix[i][j]);
             Uint32 color;
             SDL_Rect cell;
-            cell.h = cell_height;
-            cell.w = cell_width;
+            cell.h = cell.w = HANDS_MATRIX_CELL_SIZE;
             cell.x = j * cell.w;
             cell.y = i * cell.h;
             if(ev < 0)
@@ -81,7 +79,7 @@ void PokerCalculator::render_ev_matrix(const pkr::Game_equity& game)
                     observing = false;
                 break;
             case SDL_MOUSEMOTION:
-                int x(event.button.x / cell_width),y(event.button.y / cell_height);
+                int x(event.button.x / HANDS_MATRIX_CELL_SIZE),y(event.button.y / HANDS_MATRIX_CELL_SIZE);
                 pkr::HandEq::Hand h(this->hand_from_xy(x,y));
                 std::cout << '\r' << this->Hand2String(h) << " -> " << ev_matrix[y][x] << "       ";
                 std::flush(std::cout);
@@ -96,7 +94,7 @@ std::unordered_set<pkr::HandEq::Hand,pkr::HandEq::hsh> PokerCalculator::render_m
     std::cout << "Enter range." << '\n';
     std::cout << "Current hand:" << '\n';
     SDL_Surface* display;
-    if((display = SDL_SetVideoMode(HANDS_MATRIX_WIDTH,HANDS_MATRIX_HEIGHT,32,SDL_HWSURFACE | SDL_DOUBLEBUF)) == NULL)
+    if((display = SDL_SetVideoMode(HANDS_MATRIX_CELL_SIZE*13,HANDS_MATRIX_CELL_SIZE*13,32,SDL_HWSURFACE | SDL_DOUBLEBUF)) == NULL)
         throw std::runtime_error("Can't render hand matrix");
     std::array<std::array<bool,13>,13> hand_matrix_choice;
     for(int i(0); i < 13; ++i)
@@ -107,7 +105,6 @@ std::unordered_set<pkr::HandEq::Hand,pkr::HandEq::hsh> PokerCalculator::render_m
     Uint32 notsuit_true = SDL_MapRGB(display->format,66,66,255);
     Uint32 notsuit_false = SDL_MapRGB(display->format,145,145,255);
     Uint32 blacked = SDL_MapRGB(display->format,178,178,178);
-    int cell_width(HANDS_MATRIX_WIDTH/13),cell_height(HANDS_MATRIX_HEIGHT/13);
     bool checking(true);
     while(checking)
     {
@@ -118,7 +115,7 @@ std::unordered_set<pkr::HandEq::Hand,pkr::HandEq::hsh> PokerCalculator::render_m
             {
                 case SDL_MOUSEMOTION:
                 {
-                    int x(event.motion.x / cell_width),y(event.motion.y / cell_height);
+                    int x(event.motion.x / HANDS_MATRIX_CELL_SIZE),y(event.motion.y / HANDS_MATRIX_CELL_SIZE);
                     pkr::HandEq::Hand h(this->hand_from_xy(x,y));
                     std::cout << '\r' << this->Hand2String(h) << "  ";
                     std::flush(std::cout);
@@ -137,7 +134,7 @@ std::unordered_set<pkr::HandEq::Hand,pkr::HandEq::hsh> PokerCalculator::render_m
                 }
                 case SDL_MOUSEBUTTONDOWN:
                 {
-                    int x(event.button.x / cell_width),y(event.button.y / cell_height);
+                    int x(event.button.x / HANDS_MATRIX_CELL_SIZE),y(event.button.y / HANDS_MATRIX_CELL_SIZE);
                     pkr::HandEq::Hand h(this->hand_from_xy(x,y));
                     std::cout << '\r' << this->Hand2String(h) << "  ";
                     std::flush(std::cout);
@@ -161,8 +158,7 @@ std::unordered_set<pkr::HandEq::Hand,pkr::HandEq::hsh> PokerCalculator::render_m
             }
         }
         SDL_Rect cell;
-        cell.h = cell_height;
-        cell.w = cell_width;
+        cell.h = cell.w = HANDS_MATRIX_CELL_SIZE;
         for(int i(0); i < 13; ++i)
         {
             for(int j(0); j < 13; ++j)
