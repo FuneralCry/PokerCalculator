@@ -28,7 +28,34 @@ PokerCalculator::PokerCalculator()
     running = true;
 }
 
-std::string PokerCalculator::Hand2String(pkr::HandEq::Hand hand) { return pkr::CardValuesOut[hand.value.first.first] + pkr::CardValuesOut[hand.value.first.second] + (hand.value.second ? 's' : 'n'); }
+std::string PokerCalculator::Hand2String_preflop(pkr::HandEq::Hand hand) { return pkr::CardValuesOut[hand.value.first.first] + pkr::CardValuesOut[hand.value.first.second] + (hand.value.second ? 's' : 'n'); }
+
+std::unordered_set<pkr::Hand> PokerCalculator::inverseSet_postflop(const std::unordered_set<pkr::Hand>& hands)
+{
+    std::unordered_set<pkr::Hand> res;
+    for(char v1((char)pkr::CardValue::two); v1 <= (char)pkr::CardValue::ace; ++v1)
+    {
+        for(char s1((char)pkr::CardSuit::club); s1 <= (char)pkr::CardSuit::spade; ++s1)
+        {
+            for(char v2((char)pkr::CardValue::two); v2 <= (char)pkr::CardValue::ace; ++v2)
+            {
+                for(char s2((char)pkr::CardSuit::club); s2 <= (char)pkr::CardSuit::spade; ++s2)
+                {
+                    pkr::Hand h(
+                        std::make_pair(
+                            pkr::Card(v1,s1),
+                            pkr::Card(v2,s2)
+                        )
+                        );
+                    if(hands.find(h) == hands.end())
+                        res.insert(h);
+                }
+            }
+        }
+    }
+
+    return res;
+}
 
 void PokerCalculator::start()
 {
@@ -43,7 +70,7 @@ void PokerCalculator::start()
         this->calcEquity();
 }
 
-void PokerCalculator::processAction(pkr::Game_equity& game, int player_num)
+void PokerCalculator::processAction(pkr::Game_equity_postflop* game, int player_num)
 {
     std::cout << "What action: check (c), fold (f), bet (b), call (l) or all-in (a)?" << '\n';
     char answ;
@@ -55,16 +82,16 @@ void PokerCalculator::processAction(pkr::Game_equity& game, int player_num)
         std::cout << "Enter stake:" << '\n';
         long long stake;
         std::cin >> stake;
-        game.playerAction(player_num,pkr::Actions::bet,stake);
+        game->playerAction(player_num,pkr::Actions::bet,stake);
     }
     else if(answ == 'c')
-        game.playerAction(player_num,pkr::Actions::check);
+        game->playerAction(player_num,pkr::Actions::check);
     else if(answ == 'f')
-        game.playerAction(player_num,pkr::Actions::fold);
+        game->playerAction(player_num,pkr::Actions::fold);
     else if(answ == 'l')
-        game.playerAction(player_num,pkr::Actions::call);
+        game->playerAction(player_num,pkr::Actions::call);
     else if(answ == 'a')
-        game.playerAction(player_num,pkr::Actions::allin);
+        game->playerAction(player_num,pkr::Actions::allin);
     else
         throw std::invalid_argument("Invalid answer.");
 }
@@ -112,7 +139,7 @@ void PokerCalculator::calcEquity()
     if(host_pos < 0 or host_pos >= players_num)
         throw std::invalid_argument("Invalid host position");
     pkr::Hand host_hand;
-    std::vector<pkr::Player_s::StratSet> strategies;
+    std::vector<std::pair<double,double>> strategies;
     std::vector<long long> stacks;
     std::vector<pkr::Card> board(this->fillBoard());
     for(int i(0); i < players_num; ++i)
@@ -144,7 +171,6 @@ void PokerCalculator::calcEquity()
                         }
                     }
                 }
-            strategies.push_back(std::make_pair(pkr::HandEq::convertRange2Strat(1.0),pkr::HandEq::convertRange2Strat(1.0)));
             std::cout << "What stack do you have? (Enter number like: 10000)" << '\n';
             long long stack;
             std::cin >> stack;
@@ -152,32 +178,30 @@ void PokerCalculator::calcEquity()
         }
         else
         {
-            std::cout << "What push range does player " << std::to_string(i) << " has?" << '\n';
-            auto strat_push(this->render_matrix_and_get_hands({}));
-            std::cout << "What current range does player " << std::to_string(i) << " has?" << '\n';
-            auto strat_curr(this->render_matrix_and_get_hands(strat_push));
-            for(auto strat : strat_push)
-                strat_curr.insert(strat);
-            strategies.push_back(std::make_pair(strat_push,strat_curr));
             std::cout << "What stack does player " << std::to_string(i) << " has? (Enter number like: 10000)" << '\n';
             long long stack;
             std::cin >> stack;
             stacks.push_back(stack);
         }
+        strategies.push_back(std::make_pair(1.0,1.0));
     }
     std::cout << "What are current blinds? (Enter even number like: 200)" << '\n';
     long long BB;
     std::cin >> BB;
-    pkr::Game_equity game(host_hand,board,players_num,strategies,stacks,host_pos,BB);
-    game.setBlinds();
+    pkr::Game_equity_postflop* game;
+    if(board.empty())
+        game = new pkr::Game_equity_preflop(host_hand,board,players_num,strategies,stacks,host_pos,BB);
+    else
+        game = new pkr::Game_equity_postflop(host_hand,board,players_num,strategies,stacks,host_pos,BB);
+    game->setBlinds();
     std::cout << "Now you need to enter player's actions." << '\n';
     while(true)
     {
-        int curr(*game.getOrder().begin());
+        int curr(*game->getOrder().begin());
         if(curr == host_pos)
         {
             std::cout << "It's your turn." << '\n';
-            if(game.getState() == game.getMaxState())
+            if(game->getState() == game->getMaxState())
             {
                 std::cout << "Do you wish to calculate equity (1) or proceed acting (2)?" << '\n';
                 int answ;
@@ -194,40 +218,67 @@ void PokerCalculator::calcEquity()
             std::cout << "It is turn of " << std::to_string(curr) << '\n';
             this->processAction(game,curr);
         }
-        if(game.canChangeState())
+        if(game->canChangeState())
         {
-            if(game.getState() == (int)pkr::States::pflop)
+            if(game->getState() == (int)pkr::States::pflop)
             {
                 if(board.size() < 3)
                     throw std::runtime_error("Invalid board size");
-                game.changeGameState();
+                game->changeGameState();
             }
-            else if(game.getState() == (int)pkr::States::flop)
+            else if(game->getState() == (int)pkr::States::flop)
             {
                 if(board.size() < 4)
                     throw std::runtime_error("Invalid board size");
-                game.changeGameState();
+                game->changeGameState();
             }
-            else if(game.getState() == (int)pkr::States::flop)
+            else if(game->getState() == (int)pkr::States::flop)
             {
                 if(board.size() < 5)
                     throw std::runtime_error("Invalid board size");
-                game.changeGameState();
+                game->changeGameState();
             }
             else
                 throw std::runtime_error("Game has been ended");
 
-            std::cout << "Game state has been changed to: " << pkr::SatesOut[game.getState()] << '\n';
+            std::cout << "Game state has been changed to: " << pkr::SatesOut[game->getState()] << '\n';
+        }
+    }
+
+    for(int i : game->getOrder())
+    {
+        if(game->getPlayers()[i]->isHost())
+            continue;
+        if(board.empty())
+        {
+            std::cout << "What current range does player " << std::to_string(i) << " has?" << '\n';
+            auto strat_curr(this->render_matrix_and_get_hands_preflop({}));
+            std::cout << "What push range does player " << std::to_string(i) << " has?" << '\n';
+            auto strat_push(this->render_matrix_and_get_hands_preflop(pkr::HandEq::inverseSet(strat_curr)));
+            for(auto strat : strat_push)
+                strat_curr.insert(strat);
+            pkr::Game_equity_preflop* game_prf(dynamic_cast<pkr::Game_equity_preflop*>(game));
+            game_prf->changeStrategy(i,std::make_pair(strat_push,strat_curr));
+        }
+        else
+        {
+            std::cout << "What current range does player " << std::to_string(i) << " has?" << '\n';
+            auto strat_curr(this->render_matrix_and_get_hands_postflop({}));
+            std::cout << "What push range does player " << std::to_string(i) << " has?" << '\n';
+            auto strat_push(this->render_matrix_and_get_hands_postflop(inverseSet_postflop(strat_curr)));
+            for(auto strat : strat_push)
+                strat_curr.insert(strat);
+            game->changeStrategy(i,std::make_pair(strat_push,strat_curr));
         }
     }
     std::cout << "Your chip EV is: ";
-    if(game.getBoard().empty())
+    if(board.empty())
     {
-        std::cout << std::to_string(game.getEquityPreFlop()) << '\n';
+        std::cout << std::to_string(game->getEquity()) << '\n';
         this->render_ev_matrix(game);
     }
     else
-        std::cout << std::to_string(game.getEquityPostFlop(10000)) << '\n';
+        std::cout << std::to_string(game->getEquity()) << '\n';
 }
 
 void PokerCalculator::calcOdds()
