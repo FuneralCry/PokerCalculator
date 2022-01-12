@@ -73,6 +73,12 @@ void PokerCalculator::start()
 void PokerCalculator::processAction(pkr::Game_equity_postflop* game, int player_num)
 {
     std::cout << "What action: check (c), fold (f), bet (b), call (l) or all-in (a)?" << '\n';
+    long long to_call(game->getMinStake() - game->getPlayers()[player_num]->getPaidThisState());
+    if(to_call > 0)
+        std::cout << to_call << " to call.";
+    else
+        std::cout << "Call is anavailable.";
+    std::cout << '\n';
     char answ;
     std::cin >> answ;
     if(answ != 'c' and answ != 'f' and answ != 'b' and answ != 'a' and answ != 'l')
@@ -128,12 +134,12 @@ std::vector<pkr::Card> PokerCalculator::fillBoard()
 
 void PokerCalculator::calcEquity()
 {
-    std::cout << "How many players we have at the table? (2-9)" << '\n';
+    std::cout << "How many players we have at the table? (2-3)" << '\n';
     int players_num;
     std::cin >> players_num;
-    if(players_num < 2 or players_num > 9)
+    if(players_num < 2 or players_num > 3)
         throw std::invalid_argument("Invalid number of players");
-    std::cout << "What is your position? (0 - SB ... " << players_num << " - BB)" << '\n';
+    std::cout << "What is your position? (0 - SB ... " << players_num << " - BU)" << '\n';
     int host_pos;
     std::cin >> host_pos;
     if(host_pos < 0 or host_pos >= players_num)
@@ -146,31 +152,17 @@ void PokerCalculator::calcEquity()
     {
         if(i == host_pos)
         {
-            std::cout << "What hand do you have? (Enter in format like: 'A A s' or 'j 10 n')" << '\n';
+            std::cout << "What hand do you have? (Enter in format like: 'A c A d' or 'j h 10 h')" << '\n';
+            std::cout << "c - club, h - heart, s - spade, d - diamond" << '\n';
             std::string first,second;
-            char suited;
-            std::cin >> first >> second >> suited;
+            char s1,s2;
+            std::cin >> first >> s1 >> second >> s2;
             char f,s;
             f = this->CardValuesInOut[first];
             s = this->CardValuesInOut[second];
-            for(char s1((char)pkr::CardSuit::club); s1 < (char)pkr::CardSuit::spade; ++s1)
-                for(char s2((char)pkr::CardSuit::club); s2 < (char)pkr::CardSuit::spade; ++s2)
-                {
-                    pkr::Card c1(f,s1),c2(s,s2);
-                    if(std::find(board.begin(),board.end(),c1) == board.end() and std::find(board.begin(),board.end(),c2) == board.end())
-                    {
-                        if(suited == 's' and s1 == s2)
-                        {
-                            host_hand = pkr::Hand(std::make_pair(c1,c2));
-                            break;
-                        }
-                        else if(suited == 'n' and s1 != s2)
-                        {
-                            host_hand = pkr::Hand(std::make_pair(c1,c2));
-                            break;
-                        }
-                    }
-                }
+            s1 = CardSuitsInOut[s1];
+            s2 = CardSuitsInOut[s2];
+            host_hand = std::make_pair(pkr::Card(f,s1),pkr::Card(s,s2));
             std::cout << "What stack do you have? (Enter number like: 10000)" << '\n';
             long long stack;
             std::cin >> stack;
