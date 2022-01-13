@@ -56,4 +56,9 @@
 #define HEART_FALSE_G 145
 #define HEART_FALSE_B 145
 
+// General
+#define CARDS_MATRIX_CELL_SIZE 32
+
+#define SIMULATIONS_NUMBER 10000
+
 #endif

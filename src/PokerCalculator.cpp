@@ -57,6 +57,45 @@ std::unordered_set<pkr::Hand> PokerCalculator::inverseSet_postflop(const std::un
     return res;
 }
 
+std::unordered_set<pkr::Card> PokerCalculator::getCardsFromHands(std::unordered_set<pkr::Hand> hands)
+{
+    std::unordered_set<pkr::Card> res;
+    for(const pkr::Hand& h : hands)
+    {
+        res.insert(h.first);
+        res.insert(h.second);
+    }
+
+    return res;
+}
+
+std::unordered_set<pkr::Hand> PokerCalculator::getHandsFromCards(const std::unordered_set<pkr::Card>& cards)
+{
+    std::unordered_set<pkr::Hand> res;
+    for(char v1((char)pkr::CardValue::two); v1 <= (char)pkr::CardValue::ace; ++v1)
+    {
+        for(char s1((char)pkr::CardSuit::club); s1 <= (char)pkr::CardSuit::spade; ++s1)
+        {
+            for(char v2((char)pkr::CardValue::two); v2 <= (char)pkr::CardValue::ace; ++v2)
+            {
+                for(char s2((char)pkr::CardSuit::club); s2 <= (char)pkr::CardSuit::spade; ++s2)
+                {
+                    pkr::Hand h(
+                        std::make_pair(
+                            pkr::Card(v1,s1),
+                            pkr::Card(v2,s2)
+                        )
+                        );
+                    if(cards.find(h.first) != cards.end() or cards.find(h.second) != cards.end())
+                        res.insert(h);
+                }
+            }
+        }
+    }
+
+    return res;
+}
+
 void PokerCalculator::start()
 {
     std::cout << "Welcome to Poker Calculator!" << '\n';
@@ -68,6 +107,8 @@ void PokerCalculator::start()
         throw std::invalid_argument("Invalid answer");
     if(answ == 1)
         this->calcEquity();
+    else if(answ == 2)
+        this->calcOdds();
 }
 
 void PokerCalculator::processAction(pkr::Game_equity_postflop* game, int player_num)
@@ -77,7 +118,7 @@ void PokerCalculator::processAction(pkr::Game_equity_postflop* game, int player_
     if(to_call > 0)
         std::cout << to_call << " to call.";
     else
-        std::cout << "Call is anavailable.";
+        std::cout << "Call is unavailable.";
     std::cout << '\n';
     char answ;
     std::cin >> answ;
@@ -119,14 +160,19 @@ std::vector<pkr::Card> PokerCalculator::fillBoard()
     else
         throw std::invalid_argument("Invalid answer.");
     std::vector<pkr::Card> res;
+    std::unordered_set<pkr::Card> black_list;
     for(int i(0); i < card_num; ++i)
     {
+        /*
         std::cout << "Enter " << std::to_string(i) << "-th card: (In format like: 2 s or A c)" << '\n' << "c - club, h - heart, s - spade, d - diamond" << '\n';
         std::string vs,ss;
         std::cin >> vs >> ss;
         char v(CardValuesInOut[vs]);
         char s(CardSuitsInOut[ss[0]]);
-        res.push_back(pkr::Card(v,s));
+        */
+        pkr::Card c(pickCard(black_list));
+        black_list.insert(c);
+        res.push_back(c);
     }
     
     return res;
@@ -148,12 +194,15 @@ void PokerCalculator::calcEquity()
     std::vector<std::pair<double,double>> strategies;
     std::vector<long long> stacks;
     std::vector<pkr::Card> board(this->fillBoard());
+    std::unordered_set<pkr::Card> reserved_cards(board.begin(),board.end());
+    std::unordered_set<pkr::Hand> black_list(this->getHandsFromCards(reserved_cards));
     for(int i(0); i < players_num; ++i)
     {
         if(i == host_pos)
         {
             std::cout << "What hand do you have? (Enter in format like: 'A c A d' or 'j h 10 h')" << '\n';
             std::cout << "c - club, h - heart, s - spade, d - diamond" << '\n';
+            /*
             std::string first,second;
             char s1,s2;
             std::cin >> first >> s1 >> second >> s2;
@@ -163,6 +212,12 @@ void PokerCalculator::calcEquity()
             s1 = CardSuitsInOut[s1];
             s2 = CardSuitsInOut[s2];
             host_hand = std::make_pair(pkr::Card(f,s1),pkr::Card(s,s2));
+            */
+            auto hand_set(render_matrix_and_get_hands_postflop(black_list,1));
+            if(hand_set.empty())
+                throw std::invalid_argument("Pick a card");
+            host_hand = *hand_set.begin();
+            this->mergeSets(this->getHandsFromCards(this->getCardsFromHands(std::unordered_set<pkr::Hand>{host_hand})),black_list);
             std::cout << "What stack do you have? (Enter number like: 10000)" << '\n';
             long long stack;
             std::cin >> stack;
@@ -255,9 +310,11 @@ void PokerCalculator::calcEquity()
         else
         {
             std::cout << "What current range does player " << std::to_string(i) << " has?" << '\n';
-            auto strat_curr(this->render_matrix_and_get_hands_postflop({}));
+            auto strat_curr(this->render_matrix_and_get_hands_postflop(black_list));
             std::cout << "What push range does player " << std::to_string(i) << " has?" << '\n';
-            auto strat_push(this->render_matrix_and_get_hands_postflop(inverseSet_postflop(strat_curr)));
+            std::unordered_set<pkr::Hand> curr_black_list(this->inverseSet_postflop(strat_curr));
+            this->mergeSets(black_list,curr_black_list);
+            auto strat_push(this->render_matrix_and_get_hands_postflop(curr_black_list));
             for(auto strat : strat_push)
                 strat_curr.insert(strat);
             game->changeStrategy(i,std::make_pair(strat_push,strat_curr));
@@ -273,7 +330,54 @@ void PokerCalculator::calcEquity()
         std::cout << std::to_string(game->getEquity()) << '\n';
 }
 
+std::unordered_set<int> findOutWinner(const pkr::Win& result)
+{
+    int mx(0);
+    std::unordered_set<int> res;
+    for(int i(1); i < result.size(); ++i)
+    {
+        if(*result[i] > *result[mx])
+            mx = i;
+    }
+    for(int i(0); i < result.size(); ++i)
+    {
+        if(not (*result[i] < *result[mx]))
+            res.insert(i);
+    }
+
+    return res;
+}
+
 void PokerCalculator::calcOdds()
 {
-    
+    std::cout << "How many players we have at the table? (2-9)" << '\n';
+    int players_num;
+    std::cin >> players_num;
+    if(players_num < 2 or players_num > 9)
+        throw std::invalid_argument("Invalid number of players");
+    std::unordered_set<pkr::Hand> black_list;
+    std::vector<pkr::Card> board(fillBoard());
+    this->mergeSets(this->getHandsFromCards(std::unordered_set<pkr::Card>(board.begin(),board.end())),black_list);
+    std::vector<pkr::Player> players;
+    for(int i(0); i < players_num; ++i)
+    {
+        std::cout << "Enter hand of player " << std::to_string(i) << '\n';
+        auto hand_set(render_matrix_and_get_hands_postflop(black_list,1));
+        if(hand_set.empty())
+            throw std::invalid_argument("Pick a card");
+        pkr::Hand h(*hand_set.begin());
+        this->mergeSets(this->getHandsFromCards(this->getCardsFromHands(std::unordered_set<pkr::Hand>({h}))),black_list);
+        players.push_back(pkr::Player(h,"",false));
+    }
+    std::vector<long> players_wins(players_num);
+    pkr::Game_binary_sim game(players,board);
+    for(int i(0); i < SIMULATIONS_NUMBER; ++i)
+    {
+        pkr::Game_binary_sim g_sim(game.simulate());
+        auto winners(findOutWinner(g_sim.getResults()));
+        for(int p : winners)
+            ++players_wins[p];
+    }
+    for(int i(0); i < players_num; ++i)
+        std::cout << "Player " << std::to_string(i) << ": " << std::to_string(players_wins[i] * 100 / SIMULATIONS_NUMBER) << "%" << '\n';
 }
