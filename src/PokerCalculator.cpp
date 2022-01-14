@@ -237,7 +237,7 @@ void PokerCalculator::calcEquity()
     std::cin >> BB;
     pkr::Game_equity_postflop* game;
     if(board.empty())
-        game = new pkr::Game_equity_preflop(host_hand,board,players_num,strategies,stacks,host_pos,BB);
+        game = new pkr::Game_equity_preflop(host_hand,players_num,strategies,stacks,host_pos,BB);
     else
         game = new pkr::Game_equity_postflop(host_hand,board,players_num,strategies,stacks,host_pos,BB);
     game->setBlinds();
