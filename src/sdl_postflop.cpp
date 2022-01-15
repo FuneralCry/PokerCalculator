@@ -18,7 +18,7 @@ void PokerCalculator::TwoSuitsHandsCell::PutCell(int x, int y, bool val)
     x /= HANDS_MATRIX_CELL_SIZE_POSTFLOP;
     y /= HANDS_MATRIX_CELL_SIZE_POSTFLOP;
     pkr::Hand h(this->hand_from_xy_postflop(x,y,this->s1,this->s2));
-    if(this->black_list.find(h) != this->black_list.end())
+    if(this->black_list.find(h) != this->black_list.end() or h.first == h.second)
         return;
     if(val)
         cards_counter++;

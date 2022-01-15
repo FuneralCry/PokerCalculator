@@ -180,11 +180,7 @@ std::vector<pkr::Card> PokerCalculator::fillBoard()
 
 void PokerCalculator::calcEquity()
 {
-    std::cout << "How many players we have at the table? (2-3)" << '\n';
-    int players_num;
-    std::cin >> players_num;
-    if(players_num < 2 or players_num > 3)
-        throw std::invalid_argument("Invalid number of players");
+    int players_num(2);
     std::cout << "What is your position? (0 - SB ... " << players_num << " - BU)" << '\n';
     int host_pos;
     std::cin >> host_pos;
@@ -202,17 +198,6 @@ void PokerCalculator::calcEquity()
         {
             std::cout << "What hand do you have? (Enter in format like: 'A c A d' or 'j h 10 h')" << '\n';
             std::cout << "c - club, h - heart, s - spade, d - diamond" << '\n';
-            /*
-            std::string first,second;
-            char s1,s2;
-            std::cin >> first >> s1 >> second >> s2;
-            char f,s;
-            f = this->CardValuesInOut[first];
-            s = this->CardValuesInOut[second];
-            s1 = CardSuitsInOut[s1];
-            s2 = CardSuitsInOut[s2];
-            host_hand = std::make_pair(pkr::Card(f,s1),pkr::Card(s,s2));
-            */
             auto hand_set(render_matrix_and_get_hands_postflop(black_list,1));
             if(hand_set.empty())
                 throw std::invalid_argument("Pick a card");
