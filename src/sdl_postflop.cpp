@@ -1,15 +1,17 @@
 #include "PokerCalculator.h"
 
-int PokerCalculator::TwoSuitsHandsCell::cards_counter = 0;
+int PokerCalculator::Cell_postflop::cards_counter = 0;
+std::unordered_set<pkr::Hand> PokerCalculator::Cell_postflop::black_list;
+std::unordered_map<char,std::array<std::array<int,3>,2>> PokerCalculator::Cell_postflop::suit_colors;
 
-PokerCalculator::TwoSuitsHandsCell::TwoSuitsHandsCell(char s1, char s2, const std::unordered_set<pkr::Hand>& black_list, const std::unordered_map<char,std::array<std::array<int,3>,2>>& suit_colors) : s1(s1), s2(s2), black_list(black_list), suit_colors(suit_colors)
+PokerCalculator::Cell_postflop::Cell_postflop(char s1, char s2) : s1(s1), s2(s2)
 {
     for(auto& a : this->hand_matrix_choice)
         for(auto& b : a)
             b = false;
 }
 
-void PokerCalculator::TwoSuitsHandsCell::PutCell(int x, int y, bool val)
+void PokerCalculator::Cell_postflop::PutCell(int x, int y, bool val)
 {
     if(x < FRAME_WIDTH_POSTFLOP or y < FRAME_WIDTH_POSTFLOP)
         return;
@@ -29,7 +31,7 @@ void PokerCalculator::TwoSuitsHandsCell::PutCell(int x, int y, bool val)
         this->hand_matrix_choice[x][y] = val;
 }
 
-void PokerCalculator::TwoSuitsHandsCell::PrintCell(SDL_Surface* screen, int init_x, int init_y)
+void PokerCalculator::Cell_postflop::PrintCell(SDL_Renderer* renderer, int init_x, int init_y)
 {
     SDL_Rect first_frame,second_frame;
     first_frame.x = FRAME_WIDTH_POSTFLOP + init_x;
@@ -40,8 +42,10 @@ void PokerCalculator::TwoSuitsHandsCell::PrintCell(SDL_Surface* screen, int init
     second_frame.y = FRAME_WIDTH_POSTFLOP + init_y;
     second_frame.w = FRAME_WIDTH_POSTFLOP/3;
     second_frame.h = HANDS_MATRIX_CELL_SIZE_POSTFLOP*13;
-    SDL_FillRect(screen,&first_frame,SDL_MapRGB(screen->format,suit_colors[s2][1][0],suit_colors[s2][1][1],suit_colors[s2][1][2]));
-    SDL_FillRect(screen,&second_frame,SDL_MapRGB(screen->format,suit_colors[s1][1][0],suit_colors[s1][1][1],suit_colors[s1][1][2]));
+    SDL_SetRenderDrawColor(renderer,suit_colors[s2][1][0],suit_colors[s2][1][1],suit_colors[s2][1][2],1);
+    SDL_RenderFillRect(renderer,&first_frame);
+    SDL_SetRenderDrawColor(renderer,suit_colors[s1][1][0],suit_colors[s1][1][1],suit_colors[s1][1][2],1);
+    SDL_RenderFillRect(renderer,&second_frame);
     init_x += FRAME_WIDTH_POSTFLOP;
     init_y += FRAME_WIDTH_POSTFLOP;
     SDL_Rect cell;
@@ -53,21 +57,21 @@ void PokerCalculator::TwoSuitsHandsCell::PrintCell(SDL_Surface* screen, int init
             pkr::Hand h(hand_from_xy_postflop(j,i,s1,s2));
             Uint32 color;
             if(black_list.find(h) != black_list.end() or (s1 == s2 and i == j))
-                color = SDL_MapRGB(screen->format,BLACKED_RGB,BLACKED_RGB,BLACKED_RGB);
+                SDL_SetRenderDrawColor(renderer,BLACKED_RGB,BLACKED_RGB,BLACKED_RGB,1);
             else
             {
                 char s_color = i > j ? s1 : s2;
                 int active = hand_matrix_choice[i][j] ? 1 : 0;
-                color = SDL_MapRGB(screen->format,suit_colors[s_color][active][0],suit_colors[s_color][active][1],suit_colors[s_color][active][2]);
+                SDL_SetRenderDrawColor(renderer,suit_colors[s_color][active][0],suit_colors[s_color][active][1],suit_colors[s_color][active][2],1);
             }
             cell.x = j * cell.w + init_x;
             cell.y = i * cell.h+ + init_y;
-            SDL_FillRect(screen,&cell,color);
+            SDL_RenderFillRect(renderer,&cell);
         }
     }
 }
 
-std::unordered_set<pkr::Hand> PokerCalculator::TwoSuitsHandsCell::getHands() const
+std::unordered_set<pkr::Hand> PokerCalculator::Cell_postflop::getHands() const
 {
     std::unordered_set<pkr::Hand> res;
     for(int i(0); i < 13; ++i)
@@ -85,7 +89,7 @@ std::unordered_set<pkr::Hand> PokerCalculator::TwoSuitsHandsCell::getHands() con
     return res;
 }
 
-std::string PokerCalculator::TwoSuitsHandsCell::getHandName(int x, int y) const
+std::string PokerCalculator::Cell_postflop::getHandName(int x, int y) const
 {
     if(x < FRAME_WIDTH_POSTFLOP or y < FRAME_WIDTH_POSTFLOP)
         return "None";
@@ -97,7 +101,7 @@ std::string PokerCalculator::TwoSuitsHandsCell::getHandName(int x, int y) const
     return (std::string)pkr::Card((char)pkr::CardValue::ace-x,s2) + (std::string)pkr::Card((char)pkr::CardValue::ace-y,s1);
 }
 
-int PokerCalculator::TwoSuitsHandsCell::getCardsNum() const { return cards_counter; }
+int PokerCalculator::Cell_postflop::getCardsNum() const { return cards_counter; }
 
 std::unordered_map<char,std::array<std::array<int,3>,2>> PokerCalculator::getSuitColors() const
 {
@@ -141,6 +145,13 @@ std::unordered_set<pkr::Hand> PokerCalculator::mergeSets(std::unordered_set<pkr:
     return dest;
 }
 
+pkr::Hand PokerCalculator::Cell_postflop::hand_from_xy_postflop(int x, int y, int s1, int s2) const
+{
+    char v1((char)pkr::CardValue::ace-y),v2((char)pkr::CardValue::ace-x);
+
+    return std::make_pair(pkr::Card(v1,s1),pkr::Card(v2,s2));
+}
+
 std::unordered_set<pkr::Hand> PokerCalculator::render_matrix_and_get_hands_postflop(std::unordered_set<pkr::Hand> black_list, int max_cards)
 {
     if(max_cards > 0)
@@ -148,24 +159,29 @@ std::unordered_set<pkr::Hand> PokerCalculator::render_matrix_and_get_hands_postf
     else if(max_cards == 0)
         return std::unordered_set<pkr::Hand>();
     std::cout << "Current hand:" << '\n';
-    SDL_Surface* display;
     int one_cell_size(HANDS_MATRIX_CELL_SIZE_POSTFLOP*13+FRAME_WIDTH_POSTFLOP);
-    if((display = SDL_SetVideoMode(one_cell_size*4,one_cell_size*4,32,SDL_HWSURFACE | SDL_DOUBLEBUF)) == NULL)
+    SDL_Window* window;
+    SDL_Renderer* renderer;
+    if((window = SDL_CreateWindow("Preflop hands",SDL_WINDOWPOS_CENTERED,SDL_WINDOWPOS_CENTERED,one_cell_size*4,one_cell_size*4,SDL_WINDOW_SHOWN)) == nullptr)
         throw std::runtime_error("Can't render hand matrix");
-    std::array<std::array<TwoSuitsHandsCell*,4>,4> hand_matrix;
-    std::unordered_map<char,std::array<std::array<int,3>,2>> suit_colors(getSuitColors());
+    if((renderer = SDL_CreateRenderer(window,-1,SDL_RENDERER_ACCELERATED)) == nullptr)
+        throw std::runtime_error("Can't render hand matrix");
+    std::array<std::array<Cell_postflop*,4>,4> hand_matrix;
+    PokerCalculator::Cell_postflop::suit_colors = getSuitColors();
+    PokerCalculator::Cell_postflop::black_list = black_list;
     int cards_num(0);
     for(char s1((char)pkr::CardSuit::club); s1 <= (char)pkr::CardSuit::spade; ++s1)
         for(char s2((char)pkr::CardSuit::club); s2 <= (char)pkr::CardSuit::spade; ++s2)
-            hand_matrix[s1][s2] = new TwoSuitsHandsCell(s2,s1,black_list,suit_colors);
+            hand_matrix[s1][s2] = new Cell_postflop(s2,s1);
 
     bool checking(true);
     bool comfort_mode(false);
+    SDL_Event event;
+    while(SDL_PollEvent(&event)) { }
     while(checking)
     {
-        if(PokerCalculator::TwoSuitsHandsCell::cards_counter >= max_cards and max_cards > 0)
+        if(PokerCalculator::Cell_postflop::cards_counter >= max_cards and max_cards > 0)
             break;
-        SDL_Event event;
         while(SDL_PollEvent(&event))
         {
             switch(event.type)
@@ -185,9 +201,15 @@ std::unordered_set<pkr::Hand> PokerCalculator::render_matrix_and_get_hands_postf
                                 if(equal_coord == suited)
                                 {
                                     if(event.motion.state == SDL_BUTTON_LMASK)
+                                    {
                                         hand_matrix[y_cell][x_cell]->PutCell(x,y,true);
+                                        hand_matrix[y_cell][x_cell]->PutCell(y,x,true);
+                                    }
                                     if(event.motion.state == SDL_BUTTON_RMASK)
+                                    {
                                         hand_matrix[y_cell][x_cell]->PutCell(x,y,false);
+                                        hand_matrix[y_cell][x_cell]->PutCell(y,x,false);
+                                    }
                                 }
                             }
                     }
@@ -221,9 +243,15 @@ std::unordered_set<pkr::Hand> PokerCalculator::render_matrix_and_get_hands_postf
                                 if(equal_coord == suited)
                                 {
                                     if(event.button.button == SDL_BUTTON_LEFT)
+                                    {
                                         hand_matrix[y_cell][x_cell]->PutCell(x,y,true);
+                                        hand_matrix[y_cell][x_cell]->PutCell(y,x,true);
+                                    }
                                     if(event.button.button == SDL_BUTTON_RIGHT)
+                                    {
                                         hand_matrix[y_cell][x_cell]->PutCell(x,y,false);
+                                        hand_matrix[y_cell][x_cell]->PutCell(y,x,false);
+                                    }
                                 }
                             }
                     }
@@ -253,10 +281,10 @@ std::unordered_set<pkr::Hand> PokerCalculator::render_matrix_and_get_hands_postf
         }
         for(int i(0); i < hand_matrix.size(); ++i)
             for(int j(0); j < hand_matrix.size(); ++j)
-                hand_matrix[i][j]->PrintCell(display,j*one_cell_size,i*one_cell_size);
+                hand_matrix[i][j]->PrintCell(renderer,j*one_cell_size,i*one_cell_size);
 
-        SDL_Flip(display);
-        usleep(10);
+        SDL_RenderPresent(renderer);
+        SDL_Delay(10);
     }
     std::unordered_set<pkr::Hand> res;
     for(auto & a : hand_matrix)
@@ -264,7 +292,7 @@ std::unordered_set<pkr::Hand> PokerCalculator::render_matrix_and_get_hands_postf
             mergeSets(cell->getHands(),res);
     SDL_Quit();
     std::cout << '\n';
-    PokerCalculator::TwoSuitsHandsCell::cards_counter = 0;
+    PokerCalculator::Cell_postflop::cards_counter = 0;
     for(char s1((char)pkr::CardSuit::club); s1 <= (char)pkr::CardSuit::spade; ++s1)
         for(char s2((char)pkr::CardSuit::club); s2 <= (char)pkr::CardSuit::spade; ++s2)
             delete hand_matrix[s1][s2];

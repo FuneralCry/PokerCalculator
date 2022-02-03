@@ -3,6 +3,7 @@
 
 // Preflop
 #define HANDS_MATRIX_CELL_SIZE_PREFLOP 32
+#define FRAME_WIDTH_PREFLOP 1;
 
 // Colors
 #define SUIT_TRUE_R 255
@@ -22,6 +23,14 @@
 #define NSUIT_FALSE_B 255
 
 #define BLACKED_RGB 178
+
+#define TEXT_R 0
+#define TEXT_G 0
+#define TEXT_B 0
+
+#define CELL_FRAME_R 150
+#define CELL_FRAME_G 150
+#define CELL_FRAME_B 150
 
 //Postflop
 #define HANDS_MATRIX_CELL_SIZE_POSTFLOP 16
@@ -60,5 +69,7 @@
 #define CARDS_MATRIX_CELL_SIZE 32
 
 #define SIMULATIONS_NUMBER 10000
+
+#define FONT_PATH "/home/matvey/Documents/Code/PokerCalculator/res/font.ttf"
 
 #endif

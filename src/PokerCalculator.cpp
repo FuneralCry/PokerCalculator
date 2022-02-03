@@ -198,6 +198,7 @@ void PokerCalculator::calcEquity()
         {
             std::cout << "What hand do you have? (Enter in format like: 'A c A d' or 'j h 10 h')" << '\n';
             std::cout << "c - club, h - heart, s - spade, d - diamond" << '\n';
+            usleep(10000);
             auto hand_set(render_matrix_and_get_hands_postflop(black_list,1));
             if(hand_set.empty())
                 throw std::invalid_argument("Pick a card");
@@ -352,7 +353,10 @@ void PokerCalculator::calcOdds()
             throw std::invalid_argument("Pick a card");
         pkr::Hand h(*hand_set.begin());
         this->mergeSets(this->getHandsFromCards(this->getCardsFromHands(std::unordered_set<pkr::Hand>({h}))),black_list);
-        players.push_back(pkr::Player(h,"",false));
+        if(i == 0)
+            players.push_back(pkr::Player(h,"",true));
+        else
+            players.push_back(pkr::Player(h,"",false));
     }
     std::vector<long> players_wins(players_num);
     pkr::Game_binary_sim game(players,board);
