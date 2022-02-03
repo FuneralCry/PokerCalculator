@@ -32,7 +32,7 @@ void PokerCalculator::Cell_preflop::PrintCell(SDL_Renderer* renderer, int x, int
     cell.y += FRAME_WIDTH_PREFLOP;
     cell.w -= FRAME_WIDTH_PREFLOP;
     cell.h -= FRAME_WIDTH_PREFLOP;
-    if(r < 0 and (g > 0 or b > 0))
+    if(r*g < 0 or r*b < 0 or g*b < 0)
         throw std::invalid_argument("Bad RGB");
     if(r < 0)
     {

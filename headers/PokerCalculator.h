@@ -61,10 +61,24 @@ private:
         int getCardsNum() const;
     };
 
+    class Cell_card
+    {
+    private:
+        pkr::Card card;
+        int size;
+        TTF_Font* font;
+    public:
+        bool active{false};
+        static std::unordered_set<pkr::Card> black_list;
+
+        Cell_card() = delete;
+        Cell_card(pkr::Card hand, int size);
+        void PrintCell(SDL_Renderer* renderer);
+    };
+
     void init_sdl();
     std::unordered_set<pkr::HandEq::Hand,pkr::HandEq::hsh> render_matrix_and_get_hands_preflop(std::unordered_set<pkr::HandEq::Hand,pkr::HandEq::hsh> black_list);
     std::unordered_set<pkr::Hand> render_matrix_and_get_hands_postflop(std::unordered_set<pkr::Hand> black_list, int max_cards=-1);
-    std::unordered_map<char,std::array<std::array<int,3>,2>> getSuitColors() const;
     void render_ev_matrix(pkr::Game_equity_postflop* game);
     pkr::Card pickCard(std::unordered_set<pkr::Card> black_list) const;
 public:

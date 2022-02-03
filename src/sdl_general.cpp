@@ -18,62 +18,36 @@ void putText(SDL_Renderer* renderer, std::string text, int x, int y, int size)
     SDL_DestroyTexture(textureText);
 }
 
-pkr::Card PokerCalculator::pickCard(std::unordered_set<pkr::Card> black_list) const
+std::unordered_map<char,std::array<std::array<int,3>,2>> getSuitColors()
 {
-    std::cout << "Pick a card" << '\n';
-    std::cout << "Current card:" << '\n';
-    SDL_Window* window;
-    SDL_Renderer* renderer;
-    if((window = SDL_CreateWindow("Preflop hands",SDL_WINDOWPOS_CENTERED,SDL_WINDOWPOS_CENTERED,HANDS_MATRIX_CELL_SIZE_PREFLOP*13,HANDS_MATRIX_CELL_SIZE_PREFLOP*4,SDL_WINDOW_SHOWN)) == nullptr)
-        throw std::runtime_error("Can't render hand matrix");
-    if((renderer = SDL_CreateRenderer(window,-1,SDL_RENDERER_ACCELERATED)) == nullptr)
-        throw std::runtime_error("Can't render hand matrix");
-    auto suit_colors(this->getSuitColors());
-    SDL_Rect cell;
-    cell.w = CARDS_MATRIX_CELL_SIZE;
-    cell.h = CARDS_MATRIX_CELL_SIZE;
-    for(int v(0); v < 13; ++v)
-    {
-        for(char s(0); s < 4; ++s)
-        {
-            cell.x = v * cell.w;
-            cell.y = s * cell.h;
-            pkr::Card c((char)pkr::CardValue::two+v,(char)pkr::CardSuit::club+s);
-            Uint32 color;
-            if(black_list.find(c) == black_list.end())
-                SDL_SetRenderDrawColor(renderer,suit_colors[s][0][0],suit_colors[s][0][1],suit_colors[s][0][2],1);
-            else
-                SDL_SetRenderDrawColor(renderer,BLACKED_RGB,BLACKED_RGB,BLACKED_RGB,1);
-            SDL_RenderFillRect(renderer,&cell);
-        }
-    }
-    SDL_RenderPresent(renderer);
-    while(true)
-    {
-        SDL_Event event;
-        while(SDL_PollEvent(&event))
-        {
-            switch(event.type)
-            {
-                case SDL_MOUSEBUTTONDOWN:
-                {
-                    int x(event.button.x / CARDS_MATRIX_CELL_SIZE),y(event.button.y / CARDS_MATRIX_CELL_SIZE);
-                    pkr::Card c((char)pkr::CardValue::two+x,(char)pkr::CardSuit::club+y);
-                    if(black_list.find(c) == black_list.end())
-                    {
-                        std::cout << '\n';
-                        SDL_Quit();
-                        return c;
-                    }
-                }
-                case SDL_MOUSEMOTION:
-                {
-                    int x(event.button.x / CARDS_MATRIX_CELL_SIZE),y(event.button.y / CARDS_MATRIX_CELL_SIZE);
-                    pkr::Card c((char)pkr::CardValue::two+x,(char)pkr::CardSuit::club+y);
-                    std::cout << '\r' << (std::string)c  << "  ";
-                    std::flush(std::cout);
-                }
-            }
-        }
-    }
+    std::unordered_map<char,std::array<std::array<int,3>,2>> res;
+    res[(char)pkr::CardSuit::club][0][0] = CLUB_FALSE_R;
+    res[(char)pkr::CardSuit::club][0][1] = CLUB_FALSE_G;
+    res[(char)pkr::CardSuit::club][0][2] = CLUB_FALSE_B;
+    res[(char)pkr::CardSuit::club][1][0] = CLUB_TRUE_R;
+    res[(char)pkr::CardSuit::club][1][1] = CLUB_TRUE_G;
+    res[(char)pkr::CardSuit::club][1][2] = CLUB_TRUE_B;
+
+    res[(char)pkr::CardSuit::spade][0][0] = SPADE_FALSE_R;
+    res[(char)pkr::CardSuit::spade][0][1] = SPADE_FALSE_G;
+    res[(char)pkr::CardSuit::spade][0][2] = SPADE_FALSE_B;
+    res[(char)pkr::CardSuit::spade][1][0] = SPADE_TRUE_R;
+    res[(char)pkr::CardSuit::spade][1][1] = SPADE_TRUE_G;
+    res[(char)pkr::CardSuit::spade][1][2] = SPADE_TRUE_B;
+
+    res[(char)pkr::CardSuit::diamond][0][0] = DIAMOND_FALSE_R;
+    res[(char)pkr::CardSuit::diamond][0][1] = DIAMOND_FALSE_G;
+    res[(char)pkr::CardSuit::diamond][0][2] = DIAMOND_FALSE_B;
+    res[(char)pkr::CardSuit::diamond][1][0] = DIAMOND_TRUE_R;
+    res[(char)pkr::CardSuit::diamond][1][1] = DIAMOND_TRUE_G;
+    res[(char)pkr::CardSuit::diamond][1][2] = DIAMOND_TRUE_B;
+
+    res[(char)pkr::CardSuit::heart][0][0] = HEART_FALSE_R;
+    res[(char)pkr::CardSuit::heart][0][1] = HEART_FALSE_G;
+    res[(char)pkr::CardSuit::heart][0][2] = HEART_FALSE_B;
+    res[(char)pkr::CardSuit::heart][1][0] = HEART_TRUE_R;
+    res[(char)pkr::CardSuit::heart][1][1] = HEART_TRUE_G;
+    res[(char)pkr::CardSuit::heart][1][2] = HEART_TRUE_B;
+
+    return res;
 }
